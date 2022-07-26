@@ -1,4 +1,5 @@
 import { ApolloServer, gql } from "apollo-server";
+import fetch from "node-fetch";
 
 let tweets = [
   {
@@ -46,9 +47,11 @@ const typeDefs = gql`
     author: User
   }
   type Query {
+    allMovies: [Movie!]!
     allUsers: [User!]!
     allTweets: [Tweet!]!
     tweet(id: ID!): Tweet
+    movie(id: String!): Movie
   }
   type Mutation {
     postTweet(text: String!, userId: ID!): Tweet!
@@ -56,6 +59,30 @@ const typeDefs = gql`
     Deletes a Tweet if found, else returns false
     """
     deleteTweet(id: ID!): Boolean!
+  }
+  type Movie {
+    id: Int!
+    url: String!
+    imdb_code: String!
+    title: String!
+    title_english: String!
+    title_long: String!
+    slug: String!
+    year: Int!
+    rating: Float!
+    runtime: Float!
+    genres: [String!]!
+    summary: String
+    description_full: String!
+    synopsis: String
+    yt_trailer_code: String!
+    language: String!
+    mpa_rating: String!
+    background_image: String!
+    background_image_original: String!
+    small_cover_image: String!
+    medium_cover_image: String!
+    large_cover_image: String!
   }
 `;
 
@@ -69,6 +96,16 @@ const resolvers = {
     },
     allUsers() {
       return users;
+    },
+    allMovies() {
+      return fetch("https://yts.mx/api/v2/list_movies.json")
+        .then((r) => r.json())
+        .then((json) => json.data.movies);
+    },
+    movie(_, { id }) {
+      return fetch(`https://yts.mx/api/v2/movie_details.json?movie_id=${id}`)
+        .then((r) => r.json())
+        .then((json) => json.data.movie);
     },
   },
   Mutation: {
@@ -105,6 +142,10 @@ const server = new ApolloServer({ typeDefs, resolvers });
 server.listen().then(({ url }) => {
   console.log(`Running on ${url}`);
 });
+
+// apollo 서버가 resolver function을 부를 때 function에게 어떤 argument를 준다.
+// 첫번째 인자는 root argument, 두번째 인자는 내가 원하는 argument(위 typeDefs에서)
+// query operation을 작성할 때 두번째 인자를 입력하게 되면 그 인자에 해당한 data를 가져온다. 또한 resolve를 작성할 때 두번째 인자를 써서 작성할 수 있다.
 
 // resolver 중 field를 가져다 쓰는것. 이건 typeDef에서는 선언되어있지만 실제 data에는 없으면 graphql은 resolver에서 그 field를 찾기 시작한다.
 // 여기 필드에서는 props들을 가져올 수 있는데 해당 함수를 불러내는 object의 실제 data를 준다.
